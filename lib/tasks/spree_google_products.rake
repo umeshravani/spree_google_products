@@ -38,4 +38,19 @@ namespace :spree_google_shopping do
       puts "\n✅ Successfully seeded #{count} Google Taxons!"
     end
   end
+
+  desc "Remove all tables and data created by Spree Google Products"
+  task cleanup: :environment do
+    tables = %w[spree_google_credentials spree_google_product_attributes spree_google_variant_attributes spree_google_taxons]
+    
+    tables.each do |table|
+      if ActiveRecord::Base.connection.table_exists?(table)
+        ActiveRecord::Base.connection.drop_table(table, force: :cascade)
+        puts "🔥 Dropped table: #{table}"
+      else
+        puts "   Table #{table} does not exist, skipping."
+      end
+    end
+    puts "✅ Database cleanup complete."
+  end
 end
