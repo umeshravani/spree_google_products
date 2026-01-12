@@ -12,6 +12,7 @@ module Spree
       def push_product(product)
         ([product.master] + product.variants).each do |variant|
           price = price_object_for(variant)
+          
           if price.nil? || price.amount.blank? || price.amount.zero?
             next
           end
@@ -33,7 +34,6 @@ module Spree
         g_id = "online:en:#{@credential.target_country}:#{variant.sku}"
         
         begin
-
           product_status = @service.get_productstatus(@credential.merchant_center_id, g_id)
           
           shopping_status = product_status.destination_statuses.find { |s| s.destination == "Shopping" }
@@ -138,8 +138,8 @@ module Spree
         if min_days.present? && max_days.present?
           shipping_array << Google::Apis::ContentV2_1::ProductShipping.new(
             country: @credential.target_country,
-            service: "Standard", # Required field
-            price: Google::Apis::ContentV2_1::Price.new(value: "0.00", currency: @credential.target_currency), # FIX: Added Price
+            service: "Standard",
+            price: Google::Apis::ContentV2_1::Price.new(value: "0.00", currency: @credential.target_currency),
             min_handling_time: min_days.to_i,
             max_handling_time: max_days.to_i
           )
@@ -182,17 +182,34 @@ module Spree
       end
 
       def product_url(product)
-        url = Spree::Core::Engine.routes.url_helpers.product_url(product, host: Spree::Store.default.url)
-        url.sub(/^http:/, 'https:')
+        store_url = Spree::Store.default.url
+        clean_host = store_url.sub(/^https?:\/\//, '').chomp('/')
+        
+        Spree::Core::Engine.routes.url_helpers.product_url(
+          product, 
+          host: clean_host, 
+          protocol: 'https'
+        )
       end
 
       def image_url(variant)
         image = variant.images.first || variant.product.master.images.first
         return "" unless image
-        url = Rails.application.routes.url_helpers.rails_blob_url(image.attachment, host: Spree::Store.default.url)
-        url.sub(/^http:/, 'https:')
-      rescue
-        ""
+        
+        store_url = Spree::Store.default.url
+        
+        clean_host = store_url.sub(/^https?:\/\//, '').chomp('/')
+
+        url = Rails.application.routes.url_helpers.rails_blob_url(
+          image.attachment, 
+          host: clean_host, 
+          protocol: 'https' 
+        )
+        
+        url
+      rescue => e
+        Rails.logger.error "GOOGLE IMAGE ERROR: #{e.message}"
+        "" 
       end
 
       def update_status(variant, status, issues)
