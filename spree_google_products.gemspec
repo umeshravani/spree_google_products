@@ -4,8 +4,8 @@ require_relative 'lib/spree_google_products/version'
 Gem::Specification.new do |spec|
   spec.name    = 'spree_google_products'
   spec.version = SpreeGoogleProducts::VERSION
-  spec.authors = ['Your Name']
-  spec.email   = ['your@email.com']
+  spec.authors = ['Umesh Ravani']
+  spec.email   = ['umeshravani98@gmail.com']
   spec.summary = 'Production grade Google Merchant & Ads integration for Spree'
   spec.license = 'BSD-3-Clause'
 
