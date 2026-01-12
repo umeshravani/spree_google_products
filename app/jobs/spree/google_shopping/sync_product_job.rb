@@ -3,12 +3,12 @@ module Spree
     class SyncProductJob < SpreeGoogleProducts::BaseJob
       # queue_as :default
 
-      retry_on Google::Apis::ClientError, wait: :exponentially_longer, attempts: 5 do |job, error|
+      retry_on ::Google::Apis::ClientError, wait: :exponentially_longer, attempts: 5 do |job, error|
         msg = error.message.downcase
         msg.include?('quota') || msg.include?('limit') || msg.include?('too many requests')
       end
 
-      retry_on Google::Apis::ServerError, wait: :exponentially_longer, attempts: 3
+      retry_on ::Google::Apis::ServerError, wait: :exponentially_longer, attempts: 3
 
       def perform(product_id)
 
@@ -33,7 +33,7 @@ module Spree
 
           Rails.logger.info "GOOGLE SYNC JOB: ✅ Completed successfully for Product #{product.id}."
           
-        rescue Google::Apis::ClientError => e
+        rescue ::Google::Apis::ClientError => e
 
           msg = e.message.downcase
           if msg.include?('quota') || msg.include?('limit')
