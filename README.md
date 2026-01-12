@@ -26,7 +26,7 @@ Includes a full Admin Dashboard for tracking approval status, fixing data qualit
 ## 📦 Installation
 1. Add this line to your application's Gemfile:
 ```ruby
-gem 'spree_google_products', github: 'your-username/spree_google_products'
+gem 'spree_google_products', '~> 1.0'
 ```
 
 2. Install the gem:
