@@ -3,7 +3,7 @@ module Spree
       def self.prepended(base)
         base.has_one :google_product_attribute, class_name: 'Spree::GoogleProductAttribute', dependent: :destroy
         base.accepts_nested_attributes_for :google_product_attribute, allow_destroy: true
-        base.after_initialize :ensure_google_attribute
+        #base.after_initialize :ensure_google_attribute
         base.after_commit :sync_to_google, on: [:create, :update]
       end
   
