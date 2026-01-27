@@ -10,39 +10,54 @@ module Spree
           @store = Spree::Store.default
           @credential = @store.google_credential
 
-          if @credential&.active? && @credential.merchant_center_id.present?
-            service = Spree::GoogleShopping::StatusService.new(@credential)
-            @stats = service.fetch_counts
-            @last_sync = @credential.last_sync_at
-            
-            if @stats[:error]
-              flash.now[:error] = "Could not fetch live stats from Google. Showing cached or empty data."
-            end
-          else
+          @stats = { approved: 0, limited: 0, pending: 0, disapproved: 0 }
+          @last_sync = nil
 
-            @stats = { approved: 0, limited: 0, pending: 0, disapproved: 0 }
-            @last_sync = nil
+          if @credential&.active? && @credential.merchant_center_id.present?
+            begin
+              service = Spree::GoogleShopping::StatusService.new(@credential)
+              fetched_stats = service.fetch_counts
+              
+              if fetched_stats[:error]
+                flash.now[:error] = "Could not fetch live stats from Google. Data may be delayed."
+              else
+                @stats = fetched_stats
+              end
+              
+              @last_sync = @credential.last_sync_at
+
+            rescue Spree::GoogleTokenService::TokenError, Signet::AuthorizationError, Google::Auth::AuthorizationError => e
+              
+              Rails.logger.error "GOOGLE DASHBOARD: Token expired or revoked. Resetting credential. Error: #{e.message}"
+              
+              @credential.update_columns(access_token: nil, expires_at: nil)
+              
+              flash[:error] = "Your Google connection has expired. Please sign in again."
+              redirect_to edit_admin_google_merchant_settings_path
+            end
           end
         end
 
         def sync
-          products = Spree::Product.all
           @store = Spree::Store.default
           
-          if products.empty?
-            flash[:error] = "No products found to sync."
-          elsif @store.google_credential.merchant_center_id.blank?
-            flash[:error] = "Please enter your Google Merchant Center ID in Settings before syncing."
+          if @store.google_credential&.merchant_center_id.blank?
+             flash[:error] = "Please enter your Google Merchant Center ID in Settings before syncing."
+             redirect_to edit_admin_google_merchant_settings_path
+             return
+          end
+
+          product_count = 0
+          Spree::Product.active.find_each do |product|
+            Spree::GoogleShopping::SyncProductJob.perform_later(product.id)
+            product_count += 1
+          end
+          
+          if product_count == 0
+            flash[:warning] = "No active products found to sync."
           else
-            products.each do |product|
-              Spree::GoogleShopping::SyncProductJob.perform_later(product.id)
-            end
-            
-            if @store.google_credential&.merchant_center_id
-              Rails.cache.delete("google_shopping_stats_#{@store.google_credential.merchant_center_id}")
-            end
-            
-            flash[:success] = "Sync started for #{products.count} products! Statuses will update shortly."
+            Rails.cache.delete("google_shopping_stats_#{@store.google_credential.merchant_center_id}")
+            flash[:success] = "Sync started for #{product_count} products! Statuses will update shortly."
           end
 
           redirect_to admin_google_shopping_dashboard_path
