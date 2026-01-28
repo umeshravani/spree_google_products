@@ -4,7 +4,6 @@ module SpreeGoogleProducts
     isolate_namespace Spree
     engine_name 'spree_google_products'
 
-    # use rspec for tests
     config.generators do |g|
       g.test_framework :rspec
     end
@@ -15,6 +14,12 @@ module SpreeGoogleProducts
 
     initializer 'spree_google_products.assets' do |app|
       app.config.assets.paths << root.join('app/assets/images')
+
+      app.config.assets.paths << root.join('app/javascript')
+      app.config.assets.paths << root.join('vendor/javascript')
+      app.config.assets.paths << root.join('vendor/stylesheets')
+
+      app.config.assets.precompile += %w[spree_google_products_manifest]
     end
 
     initializer 'spree_google_products.importmap', before: 'importmap' do |app|
