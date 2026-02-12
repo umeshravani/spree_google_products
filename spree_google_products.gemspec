@@ -14,6 +14,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'spree_admin', '>= 5.0.0'
   spec.add_dependency 'spree_core', '>= 5.0.0'
+  spec.add_dependency 'kaminari'
 
   # For Google Ads & Performance Max
   spec.add_dependency 'google-ads-googleads', '~> 24.0'
