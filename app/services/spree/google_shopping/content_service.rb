@@ -11,6 +11,9 @@ module Spree
 
       def push_product(product)
         ([product.master] + product.variants).each do |variant|
+          # 🛡️ SAFETY CHECK: Skip if SKU is missing
+          next if variant.sku.blank?
+
           price = price_object_for(variant)
           
           if price.nil? || price.amount.blank? || price.amount.zero?
@@ -113,22 +116,29 @@ module Spree
           google_sale_price = nil
         end
         
+        # Convert Grams to Kilograms (Divide by 1000)
         product_input_weight = nil
         if variant.weight.present? && variant.weight > 0
+          weight_in_kg = (variant.weight.to_f / 1000.0).round(2)
           product_input_weight = Google::Apis::ContentV2_1::ProductShippingWeight.new(
-            value: variant.weight.to_f,
+            value: weight_in_kg,
             unit: 'kg'
           )
         end
 
+        # Convert Millimeters to Centimeters (Divide by 10)
         product_input_length = nil
         product_input_width = nil
         product_input_height = nil
 
         if variant.depth.present? && variant.width.present? && variant.height.present?
-           product_input_length = Google::Apis::ContentV2_1::ProductShippingDimension.new(value: variant.depth.to_f, unit: 'cm')
-           product_input_width = Google::Apis::ContentV2_1::ProductShippingDimension.new(value: variant.width.to_f, unit: 'cm')
-           product_input_height = Google::Apis::ContentV2_1::ProductShippingDimension.new(value: variant.height.to_f, unit: 'cm')
+           length_in_cm = (variant.depth.to_f / 10.0).round(2)
+           width_in_cm = (variant.width.to_f / 10.0).round(2)
+           height_in_cm = (variant.height.to_f / 10.0).round(2)
+
+           product_input_length = Google::Apis::ContentV2_1::ProductShippingDimension.new(value: length_in_cm, unit: 'cm')
+           product_input_width = Google::Apis::ContentV2_1::ProductShippingDimension.new(value: width_in_cm, unit: 'cm')
+           product_input_height = Google::Apis::ContentV2_1::ProductShippingDimension.new(value: height_in_cm, unit: 'cm')
         end
 
         min_days = g_prod_attr&.min_handling_time.presence || @credential.default_min_handling_time
