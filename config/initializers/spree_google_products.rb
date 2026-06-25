@@ -28,10 +28,11 @@ Rails.application.config.after_initialize do
       # Target: Spree 5.4
       Spree::Ability.register_ability(SpreeGoogleProducts::Ability)
     else
-      # Target: Spree 5.5+
+      # Target: Spree 5.5+ (Handles changes to initializing arguments dynamically)
       Spree::Ability.prepend(Module.new do
-        def initialize(user)
+        def initialize(*args, **kwargs)
           super
+          user = args.first
           merge(SpreeGoogleProducts::Ability.new(user))
         end
       end)
