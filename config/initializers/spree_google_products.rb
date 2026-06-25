@@ -1,3 +1,22 @@
+# 1. Handle Class Reloading Safely for Abilities (Spree 5.5+ Compatible)
+Rails.application.config.to_prepare do
+  if defined?(Spree::Ability)
+    if Spree::Ability.respond_to?(:register_ability)
+      # Pre-Spree 5.5 Legacy Registration
+      Spree::Ability.register_ability(SpreeGoogleProducts::Ability)
+    else
+      # Spree 5.5+ Module Prepend Registration
+      Spree::Ability.prepend(Module.new do
+        def abilities_to_register
+          base_abilities = defined?(super) ? super : []
+          base_abilities | [SpreeGoogleProducts::Ability]
+        end
+      end)
+    end
+  end
+end
+
+# 2. Handle Boot-time UI Configurations
 Rails.application.config.after_initialize do
   if Spree.respond_to?(:admin) && Spree.admin.respond_to?(:navigation)
     sidebar = Spree.admin.navigation.sidebar
@@ -21,24 +40,5 @@ Rails.application.config.after_initialize do
       label: :settings, 
       url: :edit_admin_google_merchant_settings_path, 
       active: -> { controller_name == 'google_merchant_settings' }
-  end
-  
-  if defined?(Spree::Ability) && defined?(SpreeGoogleProducts::Ability)
-    if Spree::Ability.respond_to?(:register_ability)
-      # Target: Spree 5.4
-      Spree::Ability.register_ability(SpreeGoogleProducts::Ability)
-    else
-      # Target: Spree 5.5+
-      Spree::Ability.prepend(Module.new do
-        def initialize(*args, **kwargs)
-          super
-          # Guard clause prevents recursive sub-class looping
-          if self.class == Spree::Ability
-            user = args.first # Extract only the user object safely
-            merge(SpreeGoogleProducts::Ability.new(user))
-          end
-        end
-      end)
-    end
   end
 end
