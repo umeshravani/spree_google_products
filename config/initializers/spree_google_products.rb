@@ -1,7 +1,5 @@
-# 1. Handle Class Reloading Safely for Abilities (Spree 5.5+ Production-Proof)
 Rails.application.config.to_prepare do
   if defined?(Spree)
-    # safe_constantize forces Zeitwerk to load the class safely during production boot
     ability_class = "Spree::Ability".safe_constantize
 
     if ability_class
@@ -9,11 +7,17 @@ Rails.application.config.to_prepare do
         # Pre-Spree 5.5 Legacy Registration
         ability_class.register_ability(SpreeGoogleProducts::Ability)
       else
-        # Spree 5.5+ Native Extension Registry
+        # Spree 5.5+ Safe Initialization Merge
         ability_class.prepend(Module.new do
-          def abilities_to_register
-            base_abilities = defined?(super) ? super : []
-            base_abilities | [SpreeGoogleProducts::Ability]
+          def initialize(*args, **kwargs)
+            # 1. Let Spree 5.5 load ALL core Admin Permission Sets first
+            super
+            # 2. Prevent recursive subclass loading
+            if self.class == Spree::Ability
+              # 3. Extract the single user argument the legacy extension expects
+              user = args.first 
+              merge(SpreeGoogleProducts::Ability.new(user))
+            end
           end
         end)
       end
@@ -21,7 +25,6 @@ Rails.application.config.to_prepare do
   end
 end
 
-# 2. Handle Boot-time UI Configurations
 Rails.application.config.after_initialize do
   if Spree.respond_to?(:admin) && Spree.admin.respond_to?(:navigation)
     sidebar = Spree.admin.navigation.sidebar
